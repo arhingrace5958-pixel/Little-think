@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Little Dot Thinking Vendors</title>
+    <style>
+        :root { --primary: #03dac6; --accent: #6200ee; --bg: #121212; --card: #1e1e1e; }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; text-align: center; padding: 15px; margin: 0; }
+        
+        .status-header { padding: 10px; font-size: 0.8em; font-weight: bold; border-radius: 0 0 15px 15px; margin-bottom: 20px; }
+        .online { background: rgba(3, 218, 198, 0.15); color: var(--primary); }
+        .offline { background: rgba(207, 102, 121, 0.15); color: #cf6679; }
+
+        .momo-card { background: var(--card); border: 1px solid var(--primary); padding: 15px; border-radius: 15px; margin-bottom: 20px; cursor: pointer; }
+        
+        .tabs { display: flex; background: #222; padding: 5px; border-radius: 12px; margin-bottom: 20px; }
+        .tab-btn { flex: 1; background: none; color: #888; border: none; padding: 12px; border-radius: 10px; font-weight: bold; }
+        .active-tab { background: var(--accent); color: white; }
+
+        .card { background: var(--card); padding: 20px; border-radius: 15px; margin-bottom: 15px; border: 1px solid #333; position: relative; text-align: left; }
+        .price { color: var(--primary); font-size: 1.4em; font-weight: bold; margin-bottom: 10px; }
+        .stock-warn { font-size: 0.75em; color: #ffaa00; margin-bottom: 10px; }
+        
+        input { width: 100%; box-sizing: border-box; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #121212; color: white; margin-bottom: 15px; }
+        .btn { background: var(--primary); color: black; padding: 15px; border-radius: 10px; text-decoration: none; display: block; font-weight: bold; text-align: center; }
+        .btn-out { background: #444; color: #888; pointer-events: none; }
+        
+        .ref-box { background: #2c2c2c; padding: 15px; border-radius: 12px; margin-top: 30px; border: 1px solid #ffcc00; }
+    </style>
+</head>
+<body>
+
+    <div class="status-header {{ 'online' if shop_status else 'offline' }}">
+        {{ '🟢 WE ARE ONLINE - INSTANT DELIVERY' if shop_status else '🔴 SHOP CLOSED - ORDERS PROCESSED LATER' }}
+    </div>
+
+    <h1>Little Dot Data</h1>
+
+    <div class="momo-card" onclick="copyMomo()">
+        <small>TAP TO COPY MOMO NUMBER</small>
+        <div style="font-size: 1.2em; font-weight: bold; margin: 5px 0;">0534337934</div>
+        <div style="font-size: 0.8em; opacity: 0.7;">Grace Doughan</div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active-tab" onclick="setNet(this, 'MTN')">MTN</button>
+        <button class="tab-btn" onclick="setNet(this, 'AirtelTigo')">AirtelTigo</button>
+    </div>
+
+    <div id="plans">
+        {% for net, items in plans.items() %}
+        <div id="view-{{ net }}" class="net-view" style="display: {{ 'block' if net == 'MTN' else 'none' }};">
+            {% for p in items %}
+            <div class="card">
+                <h3 style="margin: 0;">{{ p.name }}</h3>
+                <div class="price">GHS {{ p.sell }}</div>
+                
+                {% if p.stock > 0 %}
+                    <div class="stock-warn">⚡ Limited Stock: {{ p.stock }} left</div>
+                    <input type="number" id="in-{{ net }}-{{ loop.index }}" placeholder="Recipient Number">
+                    <a href="#" class="btn" onclick="order('{{ net }}', '{{ p.name }}', {{ p.sell }}, 'in-{{ net }}-{{ loop.index }}')">ORDER NOW</a>
+                {% else %}
+                    <div class="stock-warn" style="color: #cf6679;">❌ Sorry, this bundle is out of stock!</div>
+                    <a href="#" class="btn btn-out">OUT OF STOCK</a>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="ref-box">
+        <h4 style="margin: 0; color: #ffcc00;">🎁 Refer a Friend</h4>
+        <p style="font-size: 0.8em;">Get free airtime for every 5 referrals!</p>
+        <button onclick="share()" style="background: #ffcc00; border: none; padding: 5px 10px; border-radius: 5px; font-weight: bold;">Copy Referral Link</button>
+    </div>
+
+    <script>
+        function copyMomo() {
+            navigator.clipboard.writeText("0534337934");
+            alert("MoMo Number Copied!");
+        }
+
+        function setNet(btn, net) {
+            document.querySelectorAll('.net-view').forEach(v => v.style.display = 'none');
+            document.getElementById('view-' + net).style.display = 'block';
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active-tab'));
+            btn.classList.add('active-tab');
+        }
+
+        function share() {
+            navigator.clipboard.writeText(window.location.href + "?ref=LD");
+            alert("Referral link copied! Share it on WhatsApp.");
+        }
+
+        async function order(net, name, price, id) {
+            let num = document.getElementById(id).value;
+            if(num.length < 10) return alert("Enter valid number");
+
+            const res = await fetch('/record_sale', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({network: net, name: name, price: price, phone: num})
+            });
+            const data = await res.json();
+
+            let msg = `*ORDER ${data.order_id}*\nNet: ${net}\nPlan: ${name}\nTo: ${num}\nPaid: GHS ${price}\n_Sent via Little Dot Web App_`;
+            window.location.href = `https://wa.me/233534337934?text=${encodeURIComponent(msg)}`;
+        }
+    </script>
+</body>
+</html>
